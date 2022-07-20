@@ -1,11 +1,20 @@
+import sys
+
 import pandas as pd
 import numpy as np
+import scipy
 import random
 import math
 import os
-from sklearn.tree import DecisionTreeRegressor
+import matplotlib.pyplot as plt
+from sklearn import tree
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error
+from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import RandomForestClassifier
+
+from sklearn.tree import export_graphviz
 
 #importar os dados
 os.chdir("/home/megamente/Downloads")
@@ -40,7 +49,7 @@ for i in range(len(data)):
 data['sex_bin']=sex_bin
 
 #separa o target e os dados de treino
-feats=['Age','Pclass','SibSp','sex_bin','tem_filho','tem_pai']
+feats=['Age','Pclass','SibSp','sex_bin']
 x=data[feats]
 
 y=data.Survived
@@ -48,7 +57,7 @@ y=data.Survived
 #separa coisa de validação e treina
 train_x,val_x,train_y,val_y=train_test_split(x,y,random_state=0)
 
-titanic_model=DecisionTreeRegressor(random_state=42)
+titanic_model=RandomForestClassifier(random_state=42,max_depth=3)
 titanic_model.fit(train_x,train_y)
 
 #mostra o erro pra parte de validação
@@ -80,7 +89,7 @@ test_data['tem_pai']=tem_pai
 #substitui as idades que estão em NaN por uma normal
 ls=[]
 for i in range(len(test_data)):
-    if not math.isnan(test_data.iloc[i].Age) and test_data.iloc[i].Pclass==3:
+    if not math.isnan(test_data.iloc[i].Age):
         ls.append(test_data.iloc[i].Age)
 mean_age=np.mean(ls)
 std_age=np.std(ls)
@@ -88,7 +97,7 @@ std_age=np.std(ls)
 age_novo=[]
 for i in range(len(test_data)):
     if math.isnan(test_data.iloc[i].Age):
-        age_novo.append(np.random.normal(loc=mean_age,scale=std_age))
+        age_novo.append(scipy.stats.skewnorm.rvs(a=1,loc=mean_age,scale=std_age))
     else:
         age_novo.append(test_data.iloc[i].Age)
 test_data=test_data.assign(Age=age_novo)
@@ -98,9 +107,13 @@ valx=valx.dropna(axis=0)
 
 #prevê as coisas e cria o csv
 preds=titanic_model.predict(valx)
-preds=[int(round(x)) for x in preds]
 previsao=pd.DataFrame()
 previsao['PassengerId']=test_data.PassengerId
 previsao['Survived']=preds
 
 previsao.to_csv('kaggle_titanic.csv',index=False)
+
+#plt.figure(figsize=(10,10))  # customize according to the size of your tree
+#_ = tree.plot_tree(titanic_model, feature_names = x.columns,
+#                   filled=True, fontsize=6, rounded = True)
+#plt.show()
